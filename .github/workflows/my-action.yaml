@@ -11,12 +11,13 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Say hello
-            run: echo "Hello, GitHub Actions!"
+              run: echo "Hello, GitHub Actions!"
 
     # Job to build and test our C code
-    needs: [say-hello]
-    runs-on: ubuntu-latest
-    steps:
+    build-and-test:
+        needs: [say-hello]
+        runs-on: ubuntu-latest
+        steps:
 
         - name: Check out this repo # Use github actions checkout to check out this repo
           uses: actions/checkout@v3
