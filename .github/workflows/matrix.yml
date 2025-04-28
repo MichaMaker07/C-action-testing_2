@@ -1,0 +1,55 @@
+name: Combine Matrix Artifacts
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  neuer_Job:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        testversion: ["test1", "test2"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create artifact
+        run: |
+          echo "Dies ist ein Artefakt von ${{ matrix.testversion }} im Job ${{ github.job }}" > artifact-${{ matrix.testversion }}.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ github.job }}-${{ matrix.testversion }}-${{ github.run_id }}
+          path: artifact-${{ matrix.testversion }}.txt
+          retention-days: 1
+
+  combine_artifacts:
+    runs-on: ubuntu-latest
+    needs: neuer_Job
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: artifact-${{ github.job }}-*-${{ github.run_id }}
+          merge-multiple: true
+          path: combined_artifacts
+
+      - name: List combined artifacts
+        run: ls -R combined_artifacts
+
+      - name: Upload combined artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-artifact-${{ github.run_id }}
+          path: combined_artifacts/
+          retention-days: 1
+
+      - name: Merge and delete original artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+          name: combined-artifact-${{ github.run_id }}
+          pattern: artifact-${{ github.job }}-*-${{ github.run_id }}
+          delete-merged: true
