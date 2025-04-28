@@ -9,6 +9,21 @@ on:
         default: 'test1,test2'
 
 jobs:
+  prepare_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_test_versions: ${{ steps.set_matrix.outputs.matrix }}
+    steps:
+      - name: Convert test_versions to JSON array
+        id: set_matrix
+        run: |
+          # Konvertiere kommagetrennte Eingabe in JSON-Array
+          TEST_VERSIONS="${{ github.event.inputs.test_versions }}"
+          # Entferne führende und nachfolgende Leerzeichen
+          TEST_VERSIONS=$(echo "$TEST_VERSIONS" | tr -d '[:space:]')
+          # Ersetze Kommas durch "," und umschließe mit []
+          MATRIX=$(echo "$TEST_VERSIONS" | sed 's/,/","/g' | sed 's/^/["/' | sed 's/$/"]/')
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
   neuer_Job:
     runs-on: ubuntu-latest
     strategy:
