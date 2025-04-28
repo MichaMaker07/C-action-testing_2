@@ -53,7 +53,7 @@ jobs:
           done
 
       - name: List combined artifacts
-        run: ls -R combined_output || echo "No artifacts found in combined_output"
+        run: ls -R . || echo "No artifacts found in combined_output"
 
       - name: Upload combined artifact
         uses: actions/upload-artifact@v4
