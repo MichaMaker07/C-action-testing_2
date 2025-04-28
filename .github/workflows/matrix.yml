@@ -1,4 +1,5 @@
 name: Combine Matrix Artifacts
+
 on:
   workflow_dispatch:
     inputs:
@@ -12,20 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        testversion: ["test1", "test2"]
+        testversion: ${{ fromJson(format('[{0}]', join(split(github.event.inputs.test_versions, ','), '","'))) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create artifact
+      - name: Create artifact with subfolder
         run: |
-          echo "Dies ist ein Artefakt von ${{ matrix.testversion }} im Job ${{ github.job }}" > artifact-${{ matrix.testversion }}.txt
+          mkdir ${{ matrix.testversion }}
+          echo "Dies ist der Inhalt von test.log für ${{ matrix.testversion }}" > ${{ matrix.testversion }}/test.log
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: artifact-${{ github.job }}-${{ matrix.testversion }}-${{ github.run_id }}
-          path: artifact-${{ matrix.testversion }}.txt
+          path: ${{ matrix.testversion }}/
           retention-days: 1
 
   combine_artifacts:
@@ -35,23 +37,33 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: artifact-${{ github.job }}-*-${{ github.run_id }}
+          pattern: artifact-neuer_Job-*-${{ github.run_id }}
           merge-multiple: true
           path: combined_artifacts
 
+      - name: Rename test.log files
+        run: |
+          mkdir -p combined_output
+          for version in combined_artifacts/*; do
+            if [[ -d "$version" ]]; then
+              testversion=$(basename "$version")
+              mv "$version/test.log" "combined_output/test-${testversion}.log" || echo "No test.log found for $testversion"
+            fi
+          done
+
       - name: List combined artifacts
-        run: ls -R combined_artifacts
+        run: ls -R combined_output || echo "No artifacts found in combined_output"
 
       - name: Upload combined artifact
         uses: actions/upload-artifact@v4
         with:
           name: combined-artifact-${{ github.run_id }}
-          path: combined_artifacts/
+          path: combined_output/
           retention-days: 1
 
       - name: Merge and delete original artifacts
         uses: actions/upload-artifact/merge@v4
         with:
           name: combined-artifact-${{ github.run_id }}
-          pattern: artifact-${{ github.job }}-*-${{ github.run_id }}
+          pattern: artifact-neuer_Job-*-${{ github.run_id }}
           delete-merged: true
