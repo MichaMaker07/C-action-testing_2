@@ -1,9 +1,11 @@
 name: Combine Matrix Artifacts
-
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      test_versions:
+        description: 'Comma-separated list of test versions (e.g., test1,test2)'
+        required: false
+        default: 'test1,test2'
 
 jobs:
   neuer_Job:
