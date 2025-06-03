@@ -1,9 +1,7 @@
 name: Data Processing Workflow
 
-on:
-  push:
-    branches: [ main ]
-
+on: workflow_dispatch
+ 
 jobs:
   generate-data:
     runs-on: ubuntu-latest
