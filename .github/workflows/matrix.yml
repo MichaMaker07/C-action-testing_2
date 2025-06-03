@@ -1,72 +1,55 @@
-name: Combine Matrix Artifacts
+name: Data Processing Workflow
 
 on:
-  workflow_dispatch:
-    inputs:
-      test_versions:
-        description: 'Comma-separated list of test versions (e.g., test1,test2)'
-        required: false
-        default: 'test1,test2'
+  push:
+    branches: [ main ]
 
 jobs:
-  neuer_Job:
+  generate-data:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        testversion: ["test1", "test2"]
-
+        data-type: ["type-a", "type-b", "type-c"]
+    outputs:
+      data-files: ${{ steps.generate.outputs.data-files }}
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create artifact with subfolder
+      - name: Generate data
+        id: generate
         run: |
-          mkdir ${{ matrix.testversion }}
-          echo "Dies ist der Inhalt von test.log für ${{ matrix.testversion }}" > ${{ matrix.testversion }}/test.log
+          mkdir -p output
+          echo "Generating data for ${{ matrix.data-type }}"
+          echo "Sample data for ${{ matrix.data-type }}" > output/data-${{ matrix.data-type }}.txt
+          echo "data-files=output/data-${{ matrix.data-type }}.txt" >> $GITHUB_OUTPUT
 
-      - name: Upload artifact
+      - name: Upload data artifact
         uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{ github.job }}-${{ matrix.testversion }}-${{ github.run_id }}
-          path: ${{ matrix.testversion }}/
-          retention-days: 1
+          name: data-${{ matrix.data-type }}
+          path: output/data-${{ matrix.data-type }}.txt
 
-  combine_artifacts:
+  combine-and-upload:
     runs-on: ubuntu-latest
-    needs: neuer_Job
+    needs: generate-data
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: artifact-neuer_Job-*-${{ github.run_id }}
-          merge-multiple: true
-          path: combined_artifacts
+          path: artifacts
 
-      - name: Rename test.log files
+      - name: Combine data
         run: |
-          mkdir -p combined_output
-          for version in combined_artifacts/*; do
-            if [[ -d "$version" ]]; then
-              testversion=$(basename "$version")
-              mv "$version/test.log" "combined_output/test-${testversion}.log" || echo "No test.log found for $testversion"
-            fi
-          done
-
-      - name: List combined artifacts
-        run: |
-          ls -R . || echo "No artifacts found in combined_output"
-          tree .
+          mkdir -p combined
+          cat artifacts/data-type-*/*.txt > combined/combined-data.txt
+          echo "Combined all data into combined/combined-data.txt"
 
       - name: Upload combined artifact
         uses: actions/upload-artifact@v4
         with:
-          name: combined-artifact-${{ github.run_id }}
-          path: combined_output/
-          retention-days: 1
-
-      - name: Merge and delete original artifacts
-        uses: actions/upload-artifact/merge@v4
-        with:
-          name: combined-artifact-${{ github.run_id }}
-          pattern: artifact-neuer_Job-*-${{ github.run_id }}
-          delete-merged: true
+          name: combined-data
+          path: combined/combined-data.txt
